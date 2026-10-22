@@ -45,9 +45,9 @@ A no-build demo client lives in `public/` and is served by the API itself. Start
 
 It covers every endpoint: register/login, profile (`/me`), a live access-token expiry countdown, manual and
 automatic token refresh (the session is restored from the cookie on page load), logout / logout everywhere,
-change password, a 403 demo for regular users, and an admin panel to list, paginate, re-role and delete users.
+change password, a 403 demo for regular users, and an admin panel to list, paginate, view, re-role and delete users.
 The **Endpoints** panel shows the last status code for each route and the **Request log** shows every
-request/response (passwords redacted).
+request/response (passwords masked, tokens truncated).
 
 ## Environment variables
 

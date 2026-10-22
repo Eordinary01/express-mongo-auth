@@ -11,6 +11,7 @@
     { method: 'POST', path: '/api/auth/logout', desc: 'Revoke this session' },
     { method: 'POST', path: '/api/auth/logout-all', desc: 'Revoke all sessions' },
     { method: 'GET', path: '/api/users', desc: 'List users (admin)' },
+    { method: 'GET', path: '/api/users/:id', desc: 'Get one user (admin)' },
     { method: 'PATCH', path: '/api/users/:id/role', desc: 'Change role (admin)' },
     { method: 'DELETE', path: '/api/users/:id', desc: 'Delete user (admin)' },
   ];
@@ -69,7 +70,7 @@
     log.querySelector('.empty')?.remove();
     const details = el('details', {}, el('summary', {}, 'Request / response'));
     if (reqBody) details.append(el('pre', {}, `// request\n${JSON.stringify(redact(reqBody), null, 2)}`));
-    details.append(el('pre', {}, `// response\n${JSON.stringify(resBody, null, 2) ?? '(empty)'}`));
+    details.append(el('pre', {}, `// response\n${JSON.stringify(redact(resBody), null, 2) ?? '(empty)'}`));
 
     log.prepend(
       el(
@@ -88,10 +89,15 @@
     );
   }
 
+  // Never render secrets in the log: passwords are masked, tokens are truncated.
   function redact(body) {
+    if (!body || typeof body !== 'object') return body;
     const copy = { ...body };
     ['password', 'currentPassword', 'newPassword'].forEach((k) => {
       if (copy[k]) copy[k] = '••••••••';
+    });
+    ['accessToken', 'refreshToken'].forEach((k) => {
+      if (typeof copy[k] === 'string') copy[k] = `${copy[k].slice(0, 12)}…[redacted]`;
     });
     return copy;
   }
@@ -233,6 +239,9 @@
       select.disabled = isSelf;
       select.addEventListener('change', () => changeRole(u, select));
 
+      const view = el('button', { class: 'btn small' }, 'View');
+      view.addEventListener('click', () => viewUser(u));
+
       const del = el('button', { class: 'btn small danger' }, 'Delete');
       del.disabled = isSelf;
       del.addEventListener('click', () => deleteUser(u));
@@ -245,7 +254,7 @@
           el('td', {}, u.email),
           el('td', {}, select),
           el('td', {}, new Date(u.createdAt).toLocaleDateString()),
-          el('td', {}, del),
+          el('td', { class: 'row-actions' }, view, del),
         ),
       );
     });
@@ -253,6 +262,12 @@
     $('#page-info').textContent = `Page ${state.page} of ${pages} · ${state.total} users`;
     $('#prev-page').disabled = state.page <= 1;
     $('#next-page').disabled = state.page >= pages;
+  }
+
+  async function viewUser(user) {
+    const { ok, data } = await api('GET', `/api/users/${user.id}`);
+    if (ok) toast(`${data.user.name} · ${data.user.email} · ${data.user.role} (see request log)`, 'ok');
+    else toast(data?.message || 'Could not load user', 'err');
   }
 
   async function changeRole(user, select) {
