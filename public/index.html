@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Express Mongo Auth — Demo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
+          <rect x="4" y="10" width="16" height="11" rx="2" fill="#6366f1" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#c7d2fe" stroke-width="2" />
+          <circle cx="12" cy="15.5" r="1.6" fill="#e2e8f0" />
+        </svg>
+        <div>
+          <h1>Express Mongo Auth</h1>
+          <p class="muted">Demo client for the authentication &amp; authorization API</p>
+        </div>
+      </div>
+      <div class="health" id="health" title="GET /api/health">
+        <span class="dot"></span><span id="health-text">Checking API…</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="column">
+        <!-- Signed-out view -->
+        <div class="card" id="auth-card">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="login" role="tab">Login</button>
+            <button class="tab" data-tab="register" role="tab">Register</button>
+          </div>
+
+          <form id="login-form" class="form" data-panel="login">
+            <label>Email<input name="email" type="email" autocomplete="email" required /></label>
+            <label>Password
+              <input name="password" type="password" autocomplete="current-password" required />
+            </label>
+            <button type="submit" class="btn primary">Log in</button>
+            <p class="hint"><code>POST /api/auth/login</code></p>
+          </form>
+
+          <form id="register-form" class="form hidden" data-panel="register">
+            <label>Name<input name="name" autocomplete="name" required /></label>
+            <label>Email<input name="email" type="email" autocomplete="email" required /></label>
+            <label>Password
+              <input name="password" type="password" autocomplete="new-password" required />
+            </label>
+            <p class="hint">8+ chars with an uppercase letter, a lowercase letter and a number.</p>
+            <button type="submit" class="btn primary">Create account</button>
+            <p class="hint"><code>POST /api/auth/register</code></p>
+          </form>
+        </div>
+
+        <!-- Signed-in view -->
+        <div class="card hidden" id="profile-card">
+          <div class="card-head">
+            <h2>Profile</h2>
+            <span class="badge" id="role-badge"></span>
+          </div>
+          <dl class="profile">
+            <dt>Name</dt><dd id="p-name"></dd>
+            <dt>Email</dt><dd id="p-email"></dd>
+            <dt>User ID</dt><dd id="p-id" class="mono"></dd>
+            <dt>Member since</dt><dd id="p-created"></dd>
+            <dt>Access token</dt><dd id="p-token" class="mono"></dd>
+          </dl>
+          <div class="actions">
+            <button class="btn" id="btn-me">Reload profile <code>GET /me</code></button>
+            <button class="btn" id="btn-refresh">Refresh token <code>POST /refresh</code></button>
+            <button class="btn" id="btn-logout">Log out <code>POST /logout</code></button>
+            <button class="btn danger" id="btn-logout-all">
+              Log out everywhere <code>POST /logout-all</code>
+            </button>
+          </div>
+        </div>
+
+        <div class="card hidden" id="password-card">
+          <h2>Change password</h2>
+          <form id="password-form" class="form">
+            <label>Current password
+              <input name="currentPassword" type="password" autocomplete="current-password" required />
+            </label>
+            <label>New password
+              <input name="newPassword" type="password" autocomplete="new-password" required />
+            </label>
+            <button type="submit" class="btn primary">Update password</button>
+            <p class="hint"><code>PATCH /api/auth/password</code> — revokes every other session.</p>
+          </form>
+        </div>
+
+        <div class="card hidden" id="admin-card">
+          <div class="card-head">
+            <h2>Users <span class="muted small">(admin only)</span></h2>
+            <button class="btn small" id="btn-users">Reload</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th></th></tr>
+              </thead>
+              <tbody id="users-body"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <button class="btn small" id="prev-page">‹ Prev</button>
+            <span id="page-info" class="muted"></span>
+            <button class="btn small" id="next-page">Next ›</button>
+          </div>
+          <p class="hint">
+            <code>GET /api/users</code> · <code>PATCH /api/users/:id/role</code> ·
+            <code>DELETE /api/users/:id</code>
+          </p>
+        </div>
+
+        <div class="card hidden" id="forbidden-card">
+          <h2>Authorization demo</h2>
+          <p class="muted">
+            You're signed in as a regular <b>user</b>. Try the admin-only endpoint to see the API
+            refuse it with <code>403 Forbidden</code>.
+          </p>
+          <button class="btn" id="btn-try-admin">Try <code>GET /api/users</code></button>
+          <p class="hint">
+            Promote yourself with <code>npm run create-admin -- &lt;email&gt;</code>, then log in again.
+          </p>
+        </div>
+      </section>
+
+      <section class="column">
+        <div class="card">
+          <h2>Endpoints</h2>
+          <p class="muted small">Status of the last call made to each endpoint from this page.</p>
+          <ul class="endpoints" id="endpoints"></ul>
+        </div>
+
+        <div class="card log-card">
+          <div class="card-head">
+            <h2>Request log</h2>
+            <button class="btn small" id="btn-clear-log">Clear</button>
+          </div>
+          <ol class="log" id="log"></ol>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast hidden" id="toast" role="status"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>
