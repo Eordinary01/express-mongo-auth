@@ -38,6 +38,17 @@ Create the first admin (or promote an existing user):
 npm run create-admin -- admin@example.com 'AdminPass1' "Admin"
 ```
 
+## Demo frontend
+
+A no-build demo client lives in `public/` and is served by the API itself. Start the server and open
+[http://localhost:5000](http://localhost:5000). Because it's same-origin, the `httpOnly` refresh cookie works with no CORS setup.
+
+It covers every endpoint: register/login, profile (`/me`), a live access-token expiry countdown, manual and
+automatic token refresh (the session is restored from the cookie on page load), logout / logout everywhere,
+change password, a 403 demo for regular users, and an admin panel to list, paginate, view, re-role and delete users.
+The **Endpoints** panel shows the last status code for each route and the **Request log** shows every
+request/response (passwords masked, tokens truncated).
+
 ## Environment variables
 
 | Variable | Description | Default |
@@ -119,6 +130,7 @@ src/
   validators/            zod request schemas
   utils/                 JWT helpers, ApiError, asyncHandler
   scripts/createAdmin.js create/promote an admin
+public/                  demo frontend (index.html, app.js, styles.css)
 tests/auth.test.js       integration tests
 ```
 
