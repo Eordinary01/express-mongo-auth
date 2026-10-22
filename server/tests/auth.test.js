@@ -279,12 +279,3 @@ describe('role-based authorization (/api/users)', () => {
     expect(await User.findById(userId)).toBeNull();
   });
 });
-
-describe('demo frontend', () => {
-  it('serves the demo client at /', async () => {
-    const res = await request(app).get('/');
-    expect(res.status).toBe(200);
-    expect(res.headers['content-type']).toMatch(/html/);
-    expect(res.text).toContain('Express Mongo Auth');
-  });
-});

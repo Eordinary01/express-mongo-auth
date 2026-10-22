@@ -1,3 +1,5 @@
+const path = require('path');
+
 require('dotenv').config({ quiet: true });
 
 const required = (name, fallback) => {
@@ -28,6 +30,8 @@ const config = {
   bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS) || (isTest ? 4 : 12),
   corsOrigin: process.env.CORS_ORIGIN || '',
   cookieSameSite: (process.env.COOKIE_SAMESITE || 'strict').toLowerCase(),
+  // Built demo client to serve from the API (served only if the directory exists).
+  clientDist: process.env.CLIENT_DIST || path.join(__dirname, '..', '..', '..', 'client', 'dist'),
 };
 
 if (!SAME_SITE_VALUES.includes(config.cookieSameSite)) {
