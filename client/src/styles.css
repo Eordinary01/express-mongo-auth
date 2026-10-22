@@ -172,6 +172,7 @@ code { color: var(--accent-text); }
   font-weight: 600;
   cursor: pointer;
 }
+.seg { white-space: nowrap; }
 .seg:hover { color: var(--text); }
 .seg.active { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--border); }
 .segmented.sm .seg { padding: 5px 10px; font-size: 0.82rem; }
