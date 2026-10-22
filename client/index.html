@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Express Mongo Auth — Demo</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="nav-inner">
+        <a class="brand" href="/">
+          <img class="brand-mark" src="/favicon.svg" alt="" width="32" height="32" />
+          <span class="brand-text">
+            <strong>Express Mongo Auth</strong>
+            <small>Authentication &amp; RBAC demo client</small>
+          </span>
+        </a>
+        <div class="nav-right">
+          <span class="pill" id="health" title="GET /api/health">
+            <span class="dot"></span><span id="health-text">Checking API…</span>
+          </span>
+          <div class="nav-user hidden" id="nav-user">
+            <span class="avatar sm" id="nav-avatar"></span>
+            <span class="nav-name" id="nav-name"></span>
+            <button class="btn ghost sm" id="nav-logout" type="button">Log out</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="stack">
+        <!-- Signed out -->
+        <div class="stack" id="signed-out">
+          <div class="card">
+            <div class="card-body">
+              <h1 class="title" id="auth-title">Sign in to your account</h1>
+              <p class="subtle" id="auth-subtitle">Use your email and password to get an access token.</p>
+
+              <div class="segmented" role="tablist" aria-label="Authentication">
+                <button class="seg active" type="button" role="tab" data-tab="login" aria-selected="true">Log in</button>
+                <button class="seg" type="button" role="tab" data-tab="register" aria-selected="false">Register</button>
+              </div>
+
+              <form class="form" id="login-form" data-panel="login" novalidate>
+                <div class="field">
+                  <label for="login-email">Email</label>
+                  <input id="login-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+                </div>
+                <div class="field">
+                  <label for="login-password">Password</label>
+                  <div class="input-group">
+                    <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+                    <button class="reveal" type="button" data-reveal="login-password">Show</button>
+                  </div>
+                </div>
+                <button class="btn primary block" type="submit">Log in</button>
+                <p class="endpoint-hint"><span class="method POST">POST</span><code>/api/auth/login</code></p>
+              </form>
+
+              <form class="form hidden" id="register-form" data-panel="register" novalidate>
+                <div class="field">
+                  <label for="register-name">Name</label>
+                  <input id="register-name" name="name" autocomplete="name" placeholder="Ada Lovelace" required />
+                </div>
+                <div class="field">
+                  <label for="register-email">Email</label>
+                  <input id="register-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+                </div>
+                <div class="field">
+                  <label for="register-password">Password</label>
+                  <div class="input-group">
+                    <input id="register-password" name="password" type="password" autocomplete="new-password" required />
+                    <button class="reveal" type="button" data-reveal="register-password">Show</button>
+                  </div>
+                  <ul class="checklist" id="pw-rules">
+                    <li data-rule="length">8+ characters</li>
+                    <li data-rule="upper">Uppercase letter</li>
+                    <li data-rule="lower">Lowercase letter</li>
+                    <li data-rule="number">Number</li>
+                  </ul>
+                </div>
+                <button class="btn primary block" type="submit">Create account</button>
+                <p class="endpoint-hint"><span class="method POST">POST</span><code>/api/auth/register</code></p>
+              </form>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <h2>What this demo covers</h2>
+              <ul class="feature-list">
+                <li><strong>Access tokens</strong> are kept in memory and sent as <code>Authorization: Bearer</code>.</li>
+                <li><strong>Refresh tokens</strong> live in an httpOnly cookie and rotate on every refresh, with reuse detection.</li>
+                <li><strong>Role-based access</strong>: admins manage users, everyone else gets <code>403</code>.</li>
+                <li><strong>Instant revocation</strong>: logout-all and password changes kill existing tokens.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signed in -->
+        <div class="stack hidden" id="signed-in">
+          <div class="card">
+            <div class="card-body">
+              <div class="account-head">
+                <span class="avatar" id="p-avatar"></span>
+                <div class="grow">
+                  <h2 class="account-name" id="p-name"></h2>
+                  <p class="subtle" id="p-email"></p>
+                </div>
+                <span class="badge" id="role-badge"></span>
+              </div>
+              <dl class="meta">
+                <div><dt>User ID</dt><dd class="mono" id="p-id"></dd></div>
+                <div><dt>Member since</dt><dd id="p-created"></dd></div>
+              </dl>
+              <div class="token">
+                <div class="token-head">
+                  <span>Access token</span>
+                  <span class="mono" id="token-exp"></span>
+                </div>
+                <div class="meter"><span id="token-bar"></span></div>
+                <code class="token-value" id="p-token"></code>
+              </div>
+            </div>
+            <div class="card-foot actions">
+              <button class="btn" id="btn-me" type="button">Reload profile<span class="btn-code">GET /me</span></button>
+              <button class="btn" id="btn-refresh" type="button">Rotate tokens<span class="btn-code">POST /refresh</span></button>
+              <button class="btn" id="btn-logout" type="button">Log out<span class="btn-code">POST /logout</span></button>
+              <button class="btn danger" id="btn-logout-all" type="button">Log out everywhere<span class="btn-code">POST /logout-all</span></button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <h2>Change password</h2>
+              <p class="subtle">Every other session is revoked; this one gets fresh tokens.</p>
+              <form class="form" id="password-form" novalidate>
+                <div class="field-row">
+                  <div class="field">
+                    <label for="current-password">Current password</label>
+                    <input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required />
+                  </div>
+                  <div class="field">
+                    <label for="new-password">New password</label>
+                    <input id="new-password" name="newPassword" type="password" autocomplete="new-password" required />
+                  </div>
+                </div>
+                <div class="form-foot">
+                  <p class="endpoint-hint"><span class="method PATCH">PATCH</span><code>/api/auth/password</code></p>
+                  <button class="btn primary" type="submit">Update password</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="card hidden" id="admin-card">
+            <div class="card-body">
+              <div class="card-head">
+                <div>
+                  <h2>Users</h2>
+                  <p class="subtle">Admin only · <span id="page-info"></span></p>
+                </div>
+                <button class="btn ghost sm" id="btn-users" type="button">Reload</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>User</th><th>Role</th><th>Joined</th><th class="right">Actions</th></tr>
+                </thead>
+                <tbody id="users-body"></tbody>
+              </table>
+            </div>
+            <div class="detail hidden" id="user-detail"></div>
+            <div class="card-foot pager">
+              <button class="btn ghost sm" id="prev-page" type="button">‹ Previous</button>
+              <span class="subtle mono small">GET /api/users?page&amp;limit</span>
+              <button class="btn ghost sm" id="next-page" type="button">Next ›</button>
+            </div>
+          </div>
+
+          <div class="card hidden" id="forbidden-card">
+            <div class="card-body">
+              <h2>Authorization demo</h2>
+              <p class="subtle">
+                You're signed in as a regular <strong>user</strong>. Call the admin-only endpoint to see
+                the API refuse it with <code>403 Forbidden</code>.
+              </p>
+              <div class="form-foot">
+                <p class="endpoint-hint">Promote with <code>npm run create-admin -- &lt;email&gt;</code></p>
+                <button class="btn" id="btn-try-admin" type="button">Try GET /api/users</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card console" aria-label="API console">
+        <div class="console-head">
+          <div class="segmented sm" role="tablist" aria-label="API console">
+            <button class="seg active" type="button" role="tab" data-console="endpoints" aria-selected="true">
+              Endpoints <span class="count" id="endpoint-count">0</span>
+            </button>
+            <button class="seg" type="button" role="tab" data-console="log" aria-selected="false">
+              Request log <span class="count" id="log-count">0</span>
+            </button>
+          </div>
+          <button class="btn ghost sm" id="btn-clear-log" type="button">Clear log</button>
+        </div>
+        <div class="console-body">
+          <div id="endpoints" data-console-panel="endpoints"></div>
+          <ol class="log hidden" id="log" data-console-panel="log"></ol>
+        </div>
+      </aside>
+    </main>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+  </body>
+</html>

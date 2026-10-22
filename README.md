@@ -1,6 +1,11 @@
 # express-mongo-auth
 
-User authentication (registration / login) and role-based authorization API built with **Express**, **MongoDB (Mongoose)** and **JWT**.
+User authentication (registration / login) and role-based authorization built with **Express**, **MongoDB (Mongoose)** and **JWT**, plus a demo client.
+
+The repo is an npm workspaces monorepo:
+
+- `server/`: the Express + MongoDB API
+- `client/`: a Vite (vanilla JS) demo client that exercises every endpoint
 
 ## Features
 
@@ -18,15 +23,15 @@ User authentication (registration / login) and role-based authorization API buil
 
 ## Getting started
 
-Requirements: Node.js 18+ and a MongoDB instance (local, Docker, or Atlas).
+Requirements: Node.js 20.19+ and a MongoDB instance (local, Docker, or Atlas).
 
 ```bash
-npm install
-cp .env.example .env        # then set MONGO_URI and JWT secrets
-npm run dev                 # or: npm start
+npm install                              # installs both workspaces
+cp server/.env.example server/.env       # then set MONGO_URI and JWT secrets
+npm run dev                              # API on :5000 + client on :3000
 ```
 
-Quick local MongoDB with Docker:
+Open [http://localhost:3000](http://localhost:3000). Quick local MongoDB with Docker:
 
 ```bash
 docker run -d --name mongo -p 27017:27017 mongo:7
@@ -38,18 +43,26 @@ Create the first admin (or promote an existing user):
 npm run create-admin -- admin@example.com 'AdminPass1' "Admin"
 ```
 
-## Demo frontend
+## Demo client
 
-A no-build demo client lives in `public/` and is served by the API itself. Start the server and open
-[http://localhost:5000](http://localhost:5000). Because it's same-origin, the `httpOnly` refresh cookie works with no CORS setup.
+The client in `client/` covers every endpoint: register/login (with field-level validation errors), profile (`/me`),
+a live access-token expiry meter, manual and automatic token refresh (the session is restored from the cookie on
+page load), logout / logout everywhere, change password, a 403 demo for regular users, and an admin panel to list,
+paginate, view, re-role and delete users. The **API console** shows the last status code for each route and a
+request log (passwords masked, tokens truncated). It follows the OS light/dark preference.
 
-It covers every endpoint: register/login, profile (`/me`), a live access-token expiry countdown, manual and
-automatic token refresh (the session is restored from the cookie on page load), logout / logout everywhere,
-change password, a 403 demo for regular users, and an admin panel to list, paginate, view, re-role and delete users.
-The **Endpoints** panel shows the last status code for each route and the **Request log** shows every
-request/response (passwords masked, tokens truncated).
+How it talks to the API:
+
+- **Development**: Vite runs on `:3000` and proxies `/api` to `:5000` (override with `API_PROXY_TARGET`), so the
+  browser sees one origin and the `httpOnly` refresh cookie works with no CORS setup.
+- **Production (single deploy)**: `npm run build` writes `client/dist`; the API serves it automatically when that
+  folder exists (path configurable with `CLIENT_DIST`). Run `npm start` and open `http://localhost:5000`.
+- **Separate deploy**: build with `VITE_API_URL=https://api.example.com`, set `CORS_ORIGIN` to the client's origin
+  on the server, and `COOKIE_SAMESITE=none` if the two are on different sites (requires HTTPS).
 
 ## Environment variables
+
+Server variables go in `server/.env`.
 
 | Variable | Description | Default |
 | --- | --- | --- |
@@ -62,6 +75,7 @@ request/response (passwords masked, tokens truncated).
 | `BCRYPT_SALT_ROUNDS` | bcrypt cost factor | `12` |
 | `CORS_ORIGIN` | Comma-separated trusted origins (credentials allowed). `*` = any origin **without** credentials. Unset = no cross-origin access | unset |
 | `COOKIE_SAMESITE` | `SameSite` of the refresh cookie: `strict`, `lax` or `none`. Use `none` when the frontend is on a different site (forces `Secure`, so HTTPS is required) | `strict` |
+| `CLIENT_DIST` | Built client to serve from the API (only if the folder exists) | `client/dist` |
 
 ## API
 
@@ -119,25 +133,36 @@ router.delete('/posts/:id', authenticate, authorize('admin'), handler); // admin
 ## Project structure
 
 ```
-src/
-  app.js                 Express app (middleware + routes)
-  server.js              DB connection + HTTP server
-  config/                env + MongoDB connection
-  models/User.js         User schema, password hashing, refresh token storage
-  controllers/           auth + admin user handlers
-  routes/                /api/auth and /api/users
-  middleware/            authenticate/authorize, validation, errors
-  validators/            zod request schemas
-  utils/                 JWT helpers, ApiError, asyncHandler
-  scripts/createAdmin.js create/promote an admin
-public/                  demo frontend (index.html, app.js, styles.css)
-tests/auth.test.js       integration tests
+package.json             workspaces + root scripts
+server/
+  src/
+    app.js               Express app (middleware + routes, serves client/dist if built)
+    server.js            DB connection + HTTP server
+    config/              env + MongoDB connection
+    models/User.js       User schema, password hashing, refresh token storage
+    controllers/         auth + admin user handlers
+    routes/              /api/auth and /api/users
+    middleware/          authenticate/authorize, validation, errors
+    validators/          zod request schemas
+    utils/               JWT helpers, ApiError, asyncHandler
+    scripts/createAdmin.js
+  tests/auth.test.js     integration tests
+client/
+  index.html             page markup
+  vite.config.js         dev server on :3000 with /api proxy
+  src/
+    main.js              session, rendering, event wiring
+    api.js               fetch wrapper (Bearer token, silent refresh + retry)
+    console.js           endpoint catalog + request log (with redaction)
+    dom.js               DOM builder + toasts
+    styles.css           light/dark theme
 ```
 
-## Scripts
+## Scripts (run from the repo root)
 
-- `npm run dev` — start with nodemon
-- `npm start` — start in production mode
-- `npm test` — run tests (downloads a MongoDB binary on first run)
-- `npm run lint` — ESLint
+- `npm run dev`: API (nodemon) and client (Vite) together; `dev:server` / `dev:client` for one
+- `npm run build`: build the client into `client/dist`
+- `npm start`: start the API (serves `client/dist` if built)
+- `npm test`: server tests (downloads a MongoDB binary on first run)
+- `npm run lint`: ESLint for both workspaces
 - `npm run create-admin -- <email> <password> [name]`

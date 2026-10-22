@@ -1,44 +1,30 @@
 {
   "name": "express-mongo-auth",
   "version": "1.0.0",
-  "main": "src/server.js",
-  "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest --runInBand",
-    "lint": "eslint .",
-    "create-admin": "node src/scripts/createAdmin.js"
-  },
-  "keywords": [],
-  "author": "",
+  "private": true,
+  "description": "User authentication & role-based authorization with Express, MongoDB and JWT, plus a demo client",
   "license": "MIT",
-  "description": "User authentication & role-based authorization API with Express, MongoDB and JWT",
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6",
-    "dotenv": "^18.0.8",
-    "express": "^5.3.0",
-    "express-rate-limit": "^8.7.1",
-    "helmet": "^8.3.0",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.24.6",
-    "zod": "^4.6.7"
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c cyan,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "build": "npm run build -w client",
+    "start": "npm start -w server",
+    "test": "npm test -w server",
+    "lint": "eslint .",
+    "create-admin": "npm run create-admin -w server --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "concurrently": "^9.2.5",
     "eslint": "^10.13.0",
-    "globals": "^17.13.0",
-    "jest": "^30.5.2",
-    "mongodb-memory-server": "^11.3.0",
-    "nodemon": "^3.1.14",
-    "supertest": "^7.3.1"
+    "globals": "^17.13.0"
   },
   "engines": {
-    "node": ">=18"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "testTimeout": 60000
+    "node": ">=20.19"
   }
 }

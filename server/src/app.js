@@ -1,9 +1,9 @@
-const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const { corsOrigin } = require('./config/env');
+const { corsOrigin, clientDist } = require('./config/env');
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const { notFound, errorHandler } = require('./middleware/error');
@@ -20,7 +20,7 @@ if (corsOrigin === '*') {
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
-app.use(express.static(path.join(__dirname, '..', 'public')));
+if (fs.existsSync(clientDist)) app.use(express.static(clientDist));
 
 app.get('/api/health', (_req, res) => res.json({ success: true, status: 'ok' }));
 app.use('/api/auth', authRoutes);
