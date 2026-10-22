@@ -21,6 +21,7 @@ const authenticate = async (req, _res, next) => {
 
     const user = await User.findById(payload.sub);
     if (!user) throw ApiError.unauthorized('User no longer exists');
+    if (payload.ver !== user.tokenVersion) throw ApiError.unauthorized('Session has been revoked');
 
     req.user = user;
     next();

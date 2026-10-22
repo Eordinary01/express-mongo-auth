@@ -35,7 +35,13 @@ const updateRoleSchema = z.object({
   role: z.enum(ROLES),
 });
 
+const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 module.exports = {
+  paginationSchema,
   registerSchema,
   loginSchema,
   refreshSchema,

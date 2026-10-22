@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String, required: true, minlength: 8, select: false },
     role: { type: String, enum: ROLES, default: 'user' },
+    // Bumped to revoke every outstanding access and refresh token for the user.
+    tokenVersion: { type: Number, default: 0 },
     refreshTokens: { type: [refreshTokenSchema], select: false, default: [] },
   },
   {
@@ -36,6 +38,7 @@ const userSchema = new mongoose.Schema(
         delete ret.__v;
         delete ret.password;
         delete ret.refreshTokens;
+        delete ret.tokenVersion;
         return ret;
       },
     },
@@ -51,14 +54,6 @@ userSchema.methods.comparePassword = function comparePassword(candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-userSchema.methods.addRefreshToken = function addRefreshToken(tokenHash, expiresAt) {
-  const now = Date.now();
-  this.refreshTokens = this.refreshTokens
-    .filter((t) => t.expiresAt.getTime() > now)
-    .concat({ tokenHash, expiresAt })
-    .slice(-MAX_SESSIONS);
-};
-
 const User = mongoose.model('User', userSchema);
 
-module.exports = { User, ROLES };
+module.exports = { User, ROLES, MAX_SESSIONS };

@@ -142,6 +142,37 @@ describe('refresh token rotation', () => {
   });
 });
 
+describe('session revocation', () => {
+  const me = (token) => request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+
+  it('logout-all invalidates existing access and refresh tokens', async () => {
+    const { body } = await register();
+    const second = (await login()).body;
+
+    const res = await request(app)
+      .post('/api/auth/logout-all')
+      .set('Authorization', `Bearer ${body.accessToken}`);
+    expect(res.status).toBe(200);
+
+    expect((await me(body.accessToken)).status).toBe(401);
+    expect((await me(second.accessToken)).status).toBe(401);
+    for (const refreshToken of [body.refreshToken, second.refreshToken]) {
+      const r = await request(app).post('/api/auth/refresh').send({ refreshToken });
+      expect(r.status).toBe(401);
+    }
+
+    const stored = await User.findById(body.user.id).select('+refreshTokens');
+    expect(stored.refreshTokens).toHaveLength(0);
+  });
+
+  it('keeps at most 5 refresh tokens per user', async () => {
+    await register();
+    for (let i = 0; i < 6; i += 1) await login();
+    const stored = await User.findOne({ email: 'alice@example.com' }).select('+refreshTokens');
+    expect(stored.refreshTokens).toHaveLength(5);
+  });
+});
+
 describe('PATCH /api/auth/password', () => {
   it('changes the password and revokes old sessions', async () => {
     const { body } = await register();
@@ -158,6 +189,16 @@ describe('PATCH /api/auth/password', () => {
       .post('/api/auth/refresh')
       .send({ refreshToken: body.refreshToken });
     expect(old.status).toBe(401);
+
+    const oldAccess = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${body.accessToken}`);
+    expect(oldAccess.status).toBe(401);
+
+    const newAccess = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${res.body.accessToken}`);
+    expect(newAccess.status).toBe(200);
   });
 });
 
@@ -190,6 +231,22 @@ describe('role-based authorization (/api/users)', () => {
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(2);
     expect(res.body.users[0].password).toBeUndefined();
+  });
+
+  it('paginates and rejects non-integer pagination params', async () => {
+    const ok = await request(app)
+      .get('/api/users?page=2&limit=1')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ page: 2, limit: 1, total: 2 });
+    expect(ok.body.users).toHaveLength(1);
+
+    for (const qs of ['page=1.5', 'limit=2.5', 'page=0', 'limit=abc', 'limit=101']) {
+      const res = await request(app)
+        .get(`/api/users?${qs}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(400);
+    }
   });
 
   it('allows admins to change roles', async () => {

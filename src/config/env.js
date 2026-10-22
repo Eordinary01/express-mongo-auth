@@ -8,10 +8,12 @@ const required = (name, fallback) => {
   return value;
 };
 
+const SAME_SITE_VALUES = ['strict', 'lax', 'none'];
+
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isTest = nodeEnv === 'test';
 
-module.exports = {
+const config = {
   nodeEnv,
   isProduction: nodeEnv === 'production',
   isTest,
@@ -24,5 +26,12 @@ module.exports = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
   bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS) || (isTest ? 4 : 12),
-  corsOrigin: process.env.CORS_ORIGIN || '*',
+  corsOrigin: process.env.CORS_ORIGIN || '',
+  cookieSameSite: (process.env.COOKIE_SAMESITE || 'strict').toLowerCase(),
 };
+
+if (!SAME_SITE_VALUES.includes(config.cookieSameSite)) {
+  throw new Error(`COOKIE_SAMESITE must be one of: ${SAME_SITE_VALUES.join(', ')}`);
+}
+
+module.exports = config;

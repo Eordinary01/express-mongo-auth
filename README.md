@@ -8,6 +8,8 @@ User authentication (registration / login) and role-based authorization API buil
 - Short-lived **access tokens** (JWT, sent as `Authorization: Bearer <token>`)
 - Long-lived **refresh tokens** stored hashed in MongoDB, delivered as an `httpOnly` cookie (and in the JSON body for non-browser clients)
 - Refresh-token **rotation with reuse detection** (reusing an old refresh token revokes all sessions)
+- Per-user `tokenVersion` embedded in every token: logout-all, password change and reuse detection bump it, so existing **access tokens are rejected immediately**, not just at expiry
+- Refresh-token writes are single atomic MongoDB updates, so a refresh racing with a revocation can't restore a revoked session
 - Logout, logout from all devices, change password (revokes other sessions)
 - Role-based authorization middleware: `authenticate` + `authorize('admin', ...)`
 - Admin-only user management endpoints
@@ -47,7 +49,8 @@ npm run create-admin -- admin@example.com 'AdminPass1' "Admin"
 | `JWT_ACCESS_EXPIRES_IN` | Access token lifetime | `15m` |
 | `JWT_REFRESH_EXPIRES_IN` | Refresh token lifetime | `7d` |
 | `BCRYPT_SALT_ROUNDS` | bcrypt cost factor | `12` |
-| `CORS_ORIGIN` | Comma-separated allowed origins, or `*` | `*` |
+| `CORS_ORIGIN` | Comma-separated trusted origins (credentials allowed). `*` = any origin **without** credentials. Unset = no cross-origin access | unset |
+| `COOKIE_SAMESITE` | `SameSite` of the refresh cookie: `strict`, `lax` or `none`. Use `none` when the frontend is on a different site (forces `Secure`, so HTTPS is required) | `strict` |
 
 ## API
 
@@ -71,7 +74,7 @@ Password rules: 8–128 characters with at least one lowercase letter, one upper
 
 | Method | Path | Body | Description |
 | --- | --- | --- | --- |
-| GET | `/?page=1&limit=20` | | Paginated user list |
+| GET | `/?page=1&limit=20` | | Paginated user list (`page` ≥ 1, `limit` 1–100, integers) |
 | GET | `/:id` | | Get a user |
 | PATCH | `/:id/role` | `{ role: "user" \| "admin" }` | Change a user's role |
 | DELETE | `/:id` | | Delete a user |

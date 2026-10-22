@@ -2,8 +2,7 @@ const { User } = require('../models/User');
 const ApiError = require('../utils/ApiError');
 
 exports.listUsers = async (req, res) => {
-  const page = Math.max(Number(req.query.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+  const { page, limit } = req.validatedQuery;
 
   const [users, total] = await Promise.all([
     User.find()

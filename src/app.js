@@ -10,7 +10,12 @@ const { notFound, errorHandler } = require('./middleware/error');
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: corsOrigin === '*' ? true : corsOrigin.split(','), credentials: true }));
+if (corsOrigin === '*') {
+  app.use(cors({ origin: '*', credentials: false }));
+} else if (corsOrigin) {
+  const origins = corsOrigin.split(',').map((o) => o.trim());
+  app.use(cors({ origin: origins, credentials: true }));
+}
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
