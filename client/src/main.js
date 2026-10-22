@@ -1,7 +1,7 @@
 import './styles.css';
 import { $, $$, el, toast, initials } from './dom.js';
 import { renderEndpoints, resetLog } from './console.js';
-import { api, getAccessToken, setAccessToken, handleTokenExpired } from './api.js';
+import { api, getAccessToken, setAccessToken, handleTokenExpired, handleSessionEnded } from './api.js';
 
 // Non-sensitive hint so we only try to restore a session when a refresh cookie may exist.
 const SESSION_HINT = 'demo:hasSession';
@@ -45,11 +45,15 @@ async function refresh({ silent = false } = {}) {
   return true;
 }
 handleTokenExpired(() => refresh({ silent: true }));
+handleSessionEnded((message) => {
+  clearSession();
+  toast(`${message}. Please log in again.`, 'err');
+});
 
 async function loadMe() {
   const { ok, data } = await api('GET', '/api/auth/me');
   if (ok) setSession({ user: data.user });
-  else if (data) toast(data.message, 'err');
+  else if (data && getAccessToken()) toast(data.message, 'err');
   return ok;
 }
 
@@ -183,7 +187,13 @@ async function viewUser(user) {
     panel.classList.add('hidden');
     return toast(data?.message || 'Could not load user', 'err');
   }
-  const u = data.user;
+  renderDetail(data.user);
+}
+
+// Keep the open detail panel in sync with the latest server copy of the user.
+function renderDetail(u) {
+  const panel = $('#user-detail');
+  panel.dataset.userId = u.id;
   panel.replaceChildren(
     el(
       'div',
@@ -209,8 +219,11 @@ async function viewUser(user) {
 
 async function changeRole(user, select) {
   const { ok, data } = await api('PATCH', `/api/users/${user.id}/role`, { role: select.value });
-  if (ok) toast(`${user.email} is now ${data.user.role}`, 'ok');
-  else {
+  if (ok) {
+    toast(`${user.email} is now ${data.user.role}`, 'ok');
+    const panel = $('#user-detail');
+    if (!panel.classList.contains('hidden') && panel.dataset.userId === user.id) renderDetail(data.user);
+  } else {
     toast(data?.message || 'Role change failed', 'err');
     select.value = user.role;
   }

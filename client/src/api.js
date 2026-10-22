@@ -5,6 +5,10 @@ const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 let accessToken = null;
 let onTokenExpired = async () => false;
+let onSessionEnded = () => {};
+
+// 401s meaning the session is gone for good (revoked elsewhere, or the user was deleted).
+const SESSION_ENDED = ['Session has been revoked', 'User no longer exists'];
 
 export const getAccessToken = () => accessToken;
 export const setAccessToken = (token) => {
@@ -12,6 +16,10 @@ export const setAccessToken = (token) => {
 };
 export const handleTokenExpired = (handler) => {
   onTokenExpired = handler;
+};
+
+export const handleSessionEnded = (handler) => {
+  onSessionEnded = handler;
 };
 
 export async function api(method, path, body, { retry = true } = {}) {
@@ -42,5 +50,6 @@ export async function api(method, path, body, { retry = true } = {}) {
   if (status === 401 && retry && accessToken && data?.message === 'Access token expired') {
     if (await onTokenExpired()) return api(method, path, body, { retry: false });
   }
+  if (status === 401 && accessToken && SESSION_ENDED.includes(data?.message)) onSessionEnded(data.message);
   return { ok: res?.ok ?? false, status, data };
 }
